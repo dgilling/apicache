@@ -40,7 +40,8 @@ function ApiCache() {
     statusCodes: {
       include: [],
       exclude: [],
-    }
+    },
+    excludeHeaders: []
   }
 
   var instance = this
@@ -80,10 +81,20 @@ function ApiCache() {
     index.all.unshift(key)
   }
 
+  function filterHeaders(headers, excludedHeaders) {
+    var filtered = new Object();
+    for (var i in headers) {
+      if (!excludedHeaders.includes(i)) {
+        filtered[i] = headers[i];
+      }
+    }
+    return filtered;
+  }
+
   function createCacheObject(status, headers, data, encoding) {
     return {
       status: status,
-      headers: Object.assign({}, headers),
+      headers: Object.assign({}, filterHeaders(headers, globalOptions.excludeHeaders)),
       data: data,
       encoding: encoding
     }
@@ -289,13 +300,17 @@ function ApiCache() {
         key = url.parse(key).pathname
       }
 
-      if (globalOptions.appendKey.length > 0) {
-        var appendKey = req
+      if (typeof globalOptions.appendKey === "function") {
+        key += '$$appendKey=' + globalOptions.appendKey(req)
+      } else {
+        if (globalOptions.appendKey.length > 0) {
+          var appendKey = req
 
-        for (var i = 0; i < globalOptions.appendKey.length; i++) {
-          appendKey = appendKey[globalOptions.appendKey[i]]
+          for (var i = 0; i < globalOptions.appendKey.length; i++) {
+            appendKey = appendKey[globalOptions.appendKey[i]]
+          }
+          key += '$$appendKey=' + appendKey
         }
-        key += '$$appendKey=' + appendKey
       }
 
       // attempt cache hit
